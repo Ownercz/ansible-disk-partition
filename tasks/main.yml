@@ -1,0 +1,28 @@
+- name: read the passwd file
+  shell: cat /etc/fstab
+  register: user_accts
+    
+- name: umount home
+  shell: umount /home
+  when: user_accts.stdout.find('home') != -1
+  
+- name: lvremove home from {{inventory_hostname_short}} 
+  shell: lvremove /dev/mapper/cl_{{inventory_hostname_short}}-home -f
+  when: user_accts.stdout.find('home') != -1
+  
+- name: extend root
+  shell: lvextend -l +100%FREE -r /dev/mapper/cl_{{inventory_hostname_short}}-root 
+  when: user_accts.stdout.find('home') != -1
+
+- name: make home
+  shell: mkdir /home
+  when: user_accts.stdout.find('home') != -1  
+  ignore_errors: yes
+  
+- lineinfile:
+    destfile: /etc/fstab
+    regexp: 'cl_{{inventory_hostname_short}}-home'
+    insertbefore: '\/dev'
+    line: '#'
+    
+
